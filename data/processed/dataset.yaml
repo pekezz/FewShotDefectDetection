@@ -1,0 +1,20 @@
+names:
+- bottle
+- cable
+- capsule
+- carpet
+- grid
+- hazelnut
+- leather
+- metal_nut
+- pill
+- screw
+- tile
+- toothbrush
+- transistor
+- wood
+- zipper
+nc: 15
+test: /root/autodl-tmp/FewShotDefectDetection/data/processed/images/test
+train: /root/autodl-tmp/FewShotDefectDetection/data/processed/images/train
+val: /root/autodl-tmp/FewShotDefectDetection/data/processed/images/val

@@ -1,0 +1,6 @@
+names:
+- scratch
+nc: 1
+path: D:/FewShotDefectDetection/experiments/few_shot_task/aluminum
+train: images/train
+val: images/train
