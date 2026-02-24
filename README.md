@@ -1,2 +1,0 @@
-# FewShotDefectDetection
-基于yolov8的少样本工业缺陷零件检测系统
