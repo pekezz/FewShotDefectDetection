@@ -1,23 +1,20 @@
-<<<<<<< HEAD
 # 基于YOLOv8的少样本工业零件缺陷检测系统
 
-**项目作者**: 陈俊宇  
-**学号**: 3122004818  
-**完成时间**: 2025年12月
-
----
 
 ## 📋 项目概述
 
-本项目实现了一个结合YOLOv8目标检测和原型网络(Prototypical Networks)少样本学习的工业零件缺陷检测系统。系统能够在仅有5-10个标注样本的情况下快速学习新缺陷类型,特别适用于工业场景中缺陷样本稀缺的问题。
+本项目实现了一个结合 YOLOv8 目标检测和原型网络 (Prototypical Networks) 的少样本工业零件缺陷检测系统。针对工业场景中“正常样本多、缺陷样本少、新缺陷类型层出不穷”的痛点，系统能够在仅提供极少量（如 5 张）新缺陷图片的情况下，通过元学习先验知识与动态冻结微调技术，实现对新缺陷的精准检测。
 
-### 核心创新点
+### ✨ 核心创新点
 
-1. **少样本学习机制**: 基于元学习(Meta-Learning)实现5-shot/10-shot缺陷检测
-2. **掩码转换工具**: 自动将MVTec AD的像素级掩码转换为YOLO格式边界框
-3. **原型网络集成**: 通过原型学习实现快速类别适应
-4. **双模式架构**: 支持标准检测和少样本学习两种模式
-5. **PyQt5 GUI**: 友好的图形界面,降低使用门槛
+1. **混合架构设计 (ProtoYOLO)**：将 YOLOv8 强大的通用特征提取能力与原型网络的少样本度量学习能力深度融合。
+2. **双模式训练体系**：支持基础 YOLO 全监督训练（获取先验特征）与 Meta-Learning 元学习训练（获得泛化能力）。
+3. **动态少样本微调策略**：面对全新缺陷，系统自动提取 5-shot 支持集，冻结前 10 层骨干网，仅微调检测头，1分钟内即可生成专属模型。
+4. **类别缺陷聚合机制**：支持同一类别的多种缺陷合并训练，统一输出类别 ID，避免模型冗余。
+5. **现代化交互界面 (PyQt5 GUI)**：
+   * 真正的全局暗黑模式 (Dark Mode)。
+   * 独创的可交互缩放视图（支持滚轮无损缩放、鼠标平移，置信度抗锯齿显示）。
+   * 自动扫描历史缺陷，支持一键增删类别与动态训练。
 
 ---
 
@@ -25,9 +22,9 @@
 
 - **深度学习框架**: PyTorch 2.0+
 - **检测模型**: YOLOv8 (Ultralytics)
-- **少样本学习**: Prototypical Networks
-- **数据增强**: Albumentations
-- **GUI框架**: PyQt5
+- **少样本学习**: Prototypical Networks (Meta-Learning)
+- **数据增强**: Albumentations (离线增强)
+- **GUI 框架**: PyQt5
 - **数据集**: MVTec AD
 
 ---
@@ -36,24 +33,20 @@
 
 ### 1. 环境要求
 - Python 3.8+
-- CUDA 11.0+ (使用GPU时)
+- CUDA 11.0+ (使用 GPU 时)
 - 显存 ≥ 8GB (推荐)
 
 ### 2. 安装步骤
 
 ```bash
-# 安装依赖包
+# 安装核心依赖包
 pip install -r requirements.txt
 
-# 安装YOLOv8 (两种方式任选其一)
+# 修复 PyTorch 与 Numpy 版本兼容性问题 (重要)
+pip install -U "numpy>=2.0.0"
 
-# 方式1: 直接安装(推荐)
+# 安装 Ultralytics (YOLOv8)
 pip install ultralytics
-
-# 方式2: 从源码安装
-git clone https://github.com/ultralytics/ultralytics.git
-cd ultralytics
-pip install -e .
 ```
 
 ---
@@ -62,33 +55,28 @@ pip install -e .
 
 ```
 FewShotDefectDetection/
-│
-├── requirements.txt                 # 依赖包列表
-├── README.md                        # 项目说明
-├── PROJECT_STRUCTURE.md            # 详细结构说明
-│
-├── configs/                         # 配置文件
-│   └── train_config.yaml           # 训练配置
-│
-├── src/                            # 源代码
-│   ├── data/                       # 数据处理
-│   │   ├── mask_to_bbox.py        # 掩码转边界框
-│   │   └── mvtec_dataset.py       # 数据集加载器
-│   │
-│   ├── models/                     # 模型定义
-│   │   ├── prototypical_network.py # 原型网络
-│   │   └── proto_yolo.py          # Proto-YOLO模型
-│   │
-│   ├── training/                   # 训练模块
-│   │   └── meta_trainer.py        # 元训练器
-│   │
-│   └── gui/                        # 图形界面
-│       └── main_window.py         # 主窗口
-│
-└── scripts/                        # 执行脚本
-    ├── prepare_mvtec.py           # 数据预处理
-    ├── train_meta.py              # 元训练
-    └── test.py                    # 模型测试
+├── configs/                 # 配置文件
+│   └── train_config.yaml    # 训练参数配置
+├── data/                    # 数据目录
+│   ├── gui_config.json      # GUI 状态与模型持久化配置
+│   ├── processed/           # 预处理后的 MVTec 数据集 (YAML与图片)
+│   └── support_sets/        # 少样本微调时的支撑集图片缓存
+├── experiments/             # 模型权重保存目录
+│   ├── checkpoints/         # 元学习最佳权重
+│   ├── finetune_yolo/       # 全监督 YOLO 最佳权重
+│   └── few_shot_task/       # 动态生成的少样本专属模型
+├── scripts/                 # 核心执行脚本
+│   ├── prepare_mvtec.py     # 掩码转 BBox 及数据预处理
+│   ├── augment_offline.py   # 数据离线增强
+│   ├── train_yolo.py        # 基础全监督训练
+│   ├── train_meta.py        # 元学习原型网络训练
+│   └── few_shot_adapt.py    # GUI 后台调用的少样本微调核心
+├── src/                     # 源代码
+│   ├── models/              # 模型定义 (ProtoYOLO, 原型网络)
+│   ├── training/            # 训练器实现 (MetaTrainer)
+│   └── gui/                 # 图形界面
+│       └── system_window.py # 现代化主窗口核心代码
+└── README.md                # 项目说明
 ```
 
 ---
@@ -104,17 +92,10 @@ FewShotDefectDetection/
 #### 预处理数据
 
 ```bash
-python scripts/prepare_mvtec.py \
-    --data_root data/MVTec_AD \
-    --output_dir data/processed \
-    --train_ratio 0.7 \
-    --val_ratio 0.15
+# 将掩码转换为 YOLO 格式边界框并划分数据集
+python scripts/prepare_mvtec.py --data_root data/raw --output_dir data/processed
 ```
 
-这将自动:
-- 将PNG掩码转换为YOLO格式边界框标注
-- 划分训练/验证/测试集 (7:1.5:1.5)
-- 生成dataset.yaml配置文件
 
 ### 2. 模型训练
 
@@ -140,15 +121,10 @@ training:
 ### 3. GUI运行
 
 ```bash
-python src/gui/main_window.py
+python src/gui/system_window.py
 ```
 
-功能包括:
-- 配置训练参数
-- 启动模型训练
-- 加载训练好的模型
-- 实时缺陷检测
-- 结果可视化
+功能说明：在 GUI 中，你可以检测图片/视频流、动态添加新缺陷并自动开启少样本微调，还可以进行无损缩放查看检测细节。
 
 ---
 
@@ -156,225 +132,19 @@ python src/gui/main_window.py
 
 ### 1. 掩码转边界框 (mask_to_bbox.py)
 
-**功能**: 将MVTec AD的像素级二值掩码转换为YOLO格式标注
+**功能**: 系统包含自动转换工具，能将 MVTec AD 的像素级二值掩码，自动过滤微小噪点（min_area），并转换为 YOLO 格式的归一化边界框标注 class_id x_center y_center width height。
 
-**关键代码**:
-```python
-from src.data.mask_to_bbox import MaskToBBoxConverter
+### 2. Proto-YOLO 架构 (proto_yolo.py)
 
-converter = MaskToBBoxConverter(min_area=50)
+**功能**: 结合了 YOLOv8 的 Backbone (CSPDarknet53) 和特征金字塔 (FPN+PANet)，在训练时分离出支持集 (Support Set) 和查询集 (Query Set)，通过计算 Prototypical Loss 更新 Backbone 参数，使其具备泛化能力。
 
-# 转换单个掩码
-bboxes = converter.mask_to_bboxes(
-    mask_path="path/to/mask.png",
-    image_width=1024,
-    image_height=1024,
-    class_id=0
-)
+### 3. 动态少样本微调 (few_shot_adapt.py)
 
-# 批量转换数据集
-converter.convert_dataset(
-    data_root=Path("data/MVTec_AD"),
-    output_dir=Path("data/annotations"),
-    category_map={'crack': 0, 'scratch': 1}
-)
-```
-
-**输出格式**: YOLO标注文本文件
-```
-class_id x_center y_center width height
-0 0.512 0.384 0.125 0.098
-```
-
-### 2. MVTec数据集加载器 (mvtec_dataset.py)
-
-**功能**: 支持标准训练和少样本学习的数据加载
-
-**标准数据集**:
-```python
-from src.data.mvtec_dataset import MVTecDataset
-
-dataset = MVTecDataset(
-    data_root="data/MVTec_AD",
-    annotation_dir="data/annotations/train",
-    image_size=640,
-    split='train'
-)
-```
-
-**少样本数据集**:
-```python
-from src.data.mvtec_dataset import FewShotMVTecDataset
-
-few_shot_dataset = FewShotMVTecDataset(
-    base_dataset=dataset,
-    n_way=5,          # 5个类别
-    k_shot=5,         # 每类5个样本
-    query_num=10      # 每类10个查询样本
-)
-```
-
-### 3. 原型网络 (prototypical_network.py)
-
-**核心算法**: 计算类别原型并基于距离度量进行分类
-
-**原理**:
-1. 支持集特征提取
-2. 计算每个类别的原型向量(均值)
-3. 计算查询样本与原型的距离
-4. 基于距离进行分类
-
-**代码示例**:
-```python
-from src.models.prototypical_network import PrototypicalNetwork
-
-proto_net = PrototypicalNetwork(
-    feature_dim=256,
-    distance_metric='euclidean'  # 或 'cosine'
-)
-
-# 前向传播
-logits, prototypes, loss = proto_net(
-    support_features,  # (N, 256)
-    support_labels,    # (N,)
-    query_features,    # (M, 256)
-    query_labels       # (M,)
-)
-```
-
-### 4. Proto-YOLO模型 (proto_yolo.py)
-
-**架构**: YOLOv8 Backbone + 原型网络分支
-
-**两种模式**:
-
-1. **检测模式** (标准YOLO检测)
-```python
-from src.models.proto_yolo import ProtoYOLO
-
-model = ProtoYOLO(
-    yolo_weights='yolov8n.pt',
-    num_classes=5,
-    proto_feature_dim=256
-)
-
-# 标准检测
-results = model(images, mode='detection')
-```
-
-2. **原型模式** (少样本学习)
-```python
-# 少样本学习
-logits, prototypes, loss = model(
-    images=query_images,
-    mode='prototype',
-    support_images=support_images,
-    support_labels=support_labels,
-    query_labels=query_labels
-)
-```
-
-**简化版本** (不依赖ultralytics):
-```python
-from src.models.proto_yolo import SimpleProtoYOLO
-
-# 用于演示和调试
-model = SimpleProtoYOLO(
-    num_classes=5,
-    proto_feature_dim=256
-)
-```
-
-### 5. 元训练器 (meta_trainer.py)
-
-**功能**: 实现Episodic Training范式
-
-**训练流程**:
-1. 每个episode随机采样N个类别
-2. 每个类别采样K个支持样本和Q个查询样本
-3. 计算原型并对查询样本分类
-4. 反向传播更新模型
-
-**使用方法**:
-```python
-from src.training.meta_trainer import MetaTrainer
-
-trainer = MetaTrainer(
-    model=model,
-    train_loader=train_loader,
-    val_loader=val_loader,
-    lr=1e-3,
-    device='cuda'
-)
-
-# 开始训练
-trainer.train(num_epochs=200, save_freq=10)
-
-# 加载检查点
-trainer.load_checkpoint('best.pt')
-```
-
----
-
-## 📊 性能评估
-
-### 实验配置
-
-- **硬件**: NVIDIA RTX 3090 (24GB)
-- **数据集**: MVTec AD (15类物体, 5种缺陷类型)
-- **训练**: 200 epochs, 5-way 5-shot
-
-### 性能指标
-
-| 指标 | 5-way 5-shot | 5-way 10-shot | 标准YOLOv8 |
-|------|-------------|---------------|-----------|
-| mAP@0.5 | 0.82 | 0.87 | 0.92 |
-| Recall | 0.85 | 0.89 | 0.93 |
-| Precision | 0.88 | 0.91 | 0.94 |
-| 推理延迟 | 45ms | 47ms | 41ms |
-
-**优势**:
-- 训练样本需求从数千降至10个以内
-- 新类别适配时间从数周缩短至数小时
-- 保持了接近标准模型的检测精度
-
----
-
-## 🔧 YOLOv8源码使用说明
-
-### 方法1: 使用ultralytics包 (推荐)
-
-```python
-from ultralytics import YOLO
-
-# 加载预训练模型
-model = YOLO('yolov8n.pt')
-
-# 提取backbone特征
-backbone_features = model.model.model[:10](images)
-
-# 使用特定模块
-from ultralytics.nn.modules import Conv, C2f, SPPF
-```
-
-### 方法2: 从GitHub克隆
-
-```bash
-git clone https://github.com/ultralytics/ultralytics.git
-cd ultralytics
-pip install -e .
-```
-
-然后在代码中正常导入:
-```python
-from ultralytics import YOLO
-```
-
-### 关键组件说明
-
-- **Backbone**: CSPDarknet53 (特征提取)
-- **Neck**: PANet (特征融合)
-- **Head**: Detect (检测头, Anchor-Free)
+**核心算法**: 这是 GUI 联动的核心模块。当用户在界面上传 5 张新缺陷图片时，该脚本会：
+1. 提取之前训练好的 Meta 权重作为骨干。
+2. 强制冻结前 10 层网络 (Freeze=10)。
+3. 重置最后一层检测头，并针对新上传的 5 张图进行快速微调 (Transfer Learning)。
+4. 返回全新的 .pt 模型路径供 GUI 实时挂载使用。
 
 ---
 
@@ -420,37 +190,6 @@ nc: 3  # 类别数
 names: ['crack', 'scratch', 'dent']
 ```
 
-### Q3: 模型推理速度慢
-
-**优化方案**:
-1. 使用GPU加速
-2. 导出ONNX格式
-3. 使用TensorRT加速
-4. 减小模型尺寸
-
-```python
-# 导出ONNX
-model.export(format='onnx')
-
-# 使用ONNX推理
-import onnxruntime
-session = onnxruntime.InferenceSession('model.onnx')
-```
-
-### Q4: 数据增强策略
-
-在`data/augmentation.py`中自定义:
-```python
-import albumentations as A
-
-transform = A.Compose([
-    A.HorizontalFlip(p=0.5),
-    A.RandomRotate90(p=0.5),
-    A.ShiftScaleRotate(p=0.5),
-    A.RandomBrightnessContrast(p=0.3),
-], bbox_params=A.BboxParams(format='yolo'))
-```
-
 ---
 
 ## 📚 参考资料
@@ -476,16 +215,6 @@ MIT License
 
 ---
 
-## 👤 作者信息
-
-- **姓名**: 陈俊宇
-- **学号**: 3122004818
-- **学校**: [您的学校]
-- **专业**: [您的专业]
-- **邮箱**: your.email@example.com
-
----
-
 ## 🙏 致谢
 
 感谢以下开源项目和数据集:
@@ -494,17 +223,6 @@ MIT License
 - MVTec AD Dataset
 - Albumentations
 - PyQt5
-
----
-
-## 📝 更新日志
-
-### v1.0.0 (2025-12-10)
-- ✅ 实现基础的Proto-YOLO模型
-- ✅ 完成MVTec AD数据集处理
-- ✅ 实现元训练流程
-- ✅ 开发PyQt5 GUI界面
-- ✅ 编写完整文档
 
 ---
 
